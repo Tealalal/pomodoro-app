@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>番茄钟</title>
+<style>
+  :root {
+    --work: #e74c3c;
+    --short-break: #2ecc71;
+    --long-break: #3498db;
+    --bg: #1a1a2e;
+    --card: #16213e;
+    --text: #eee;
+    --muted: #888;
+    --surface-dim: #2a2a4a;
+    --surface-deep: #0f0f23;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .app {
+    text-align: center;
+    background: var(--card);
+    padding: 48px 40px;
+    border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    width: 420px;
+  }
+
+  h1 {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+
+  .session-label {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 32px;
+    min-height: 20px;
+  }
+
+  .timer-wrapper {
+    position: relative;
+    width: 280px;
+    height: 280px;
+    margin: 0 auto 32px;
+  }
+
+  .timer-ring {
+    transform: rotate(-90deg);
+    width: 280px;
+    height: 280px;
+  }
+
+  .ring-bg {
+    fill: none;
+    stroke: var(--surface-dim);
+    stroke-width: 8;
+  }
+
+  .ring-fg {
+    fill: none;
+    stroke: var(--work);
+    stroke-width: 8;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.3s linear, stroke 0.3s;
+  }
+
+  .timer-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .time {
+    font-size: 64px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 2px;
+    line-height: 1;
+  }
+
+  .time-paused {
+    opacity: 0.6;
+  }
+
+  .status {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 8px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .modes {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 24px;
+    background: var(--surface-deep);
+    border-radius: 12px;
+    padding: 4px;
+  }
+
+  .mode-btn {
+    flex: 1;
+    padding: 10px 6px;
+    border: none;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+
+  .mode-btn.active {
+    background: var(--surface-dim);
+    color: #fff;
+  }
+
+  .controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 28px;
+  }
+
+  .btn-main {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+
+  .btn-main:active {
+    transform: scale(0.93);
+  }
+
+  .btn-start {
+    background: var(--work);
+    color: #fff;
+    box-shadow: 0 6px 24px rgba(231, 76, 60, 0.4);
+    width: 68px; height: 68px;
+  }
+
+  .btn-reset {
+    width: 40px; height: 40px;
+    background: transparent;
+    color: var(--muted);
+    border: 2px solid #333;
+    font-size: 16px;
+  }
+
+  .btn-reset:hover {
+    color: #fff;
+    border-color: #555;
+  }
+
+  .sessions {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .sessions span {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .dots {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--surface-dim);
+    transition: background 0.3s;
+  }
+
+  .dot.done {
+    background: var(--work);
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <h1>番茄钟</h1>
+  <div class="session-label" id="sessionLabel">专注工作</div>
+
+  <div class="timer-wrapper">
+    <svg class="timer-ring" viewBox="0 0 280 280">
+      <circle class="ring-bg" cx="140" cy="140" r="130"/>
+      <circle class="ring-fg" id="ringFg" cx="140" cy="140" r="130"
+              stroke-dasharray="816.8" stroke-dashoffset="0"/>
+    </svg>
+    <div class="timer-text">
+      <div class="time" id="timerDisplay">25:00</div>
+      <div class="status" id="statusText">就绪</div>
+    </div>
+  </div>
+
+  <div class="modes">
+    <button class="mode-btn active" data-mode="work">工作 25</button>
+    <button class="mode-btn" data-mode="shortBreak">短休 5</button>
+    <button class="mode-btn" data-mode="longBreak">长休 15</button>
+  </div>
+
+  <div class="controls">
+    <button class="btn-reset" id="btnReset" title="重置">↺</button>
+    <button class="btn-main btn-start" id="btnToggle" title="开始">▶</button>
+    <button class="btn-reset" id="btnSkip" title="跳过">⏭</button>
+  </div>
+
+  <div class="sessions">
+    今日完成 <span id="doneCount">0</span> 个番茄
+    <div class="dots" id="dots"><div class="dot"></div></div>
+  </div>
+</div>
+
+<script>
+const CIRCUMFERENCE = 2 * Math.PI * 130;
+
+const MODES = {
+  work:       { label: '专注工作', minutes: 25, color: 'var(--work)' },
+  shortBreak: { label: '短暂休息', minutes: 5,  color: 'var(--short-break)' },
+  longBreak:  { label: '长休息',   minutes: 15, color: 'var(--long-break)' },
+};
+
+const KEY_ACTIONS = {
+  Space:  () => btnToggle.click(),
+  KeyR:   () => btnReset.click(),
+  KeyS:   () => btnSkip.click(),
+  Digit1: () => switchMode('work'),
+  Digit2: () => switchMode('shortBreak'),
+  Digit3: () => switchMode('longBreak'),
+};
+
+let currentMode = 'work';
+let totalTime = MODES.work.minutes * 60;
+let intervalId = null;
+let endTime = null;
+let completedToday = 0;
+
+const timerDisplay = document.getElementById('timerDisplay');
+const statusText   = document.getElementById('statusText');
+const ringFg       = document.getElementById('ringFg');
+const sessionLabel = document.getElementById('sessionLabel');
+const btnToggle    = document.getElementById('btnToggle');
+const btnReset     = document.getElementById('btnReset');
+const btnSkip      = document.getElementById('btnSkip');
+const doneCount    = document.getElementById('doneCount');
+const dotsEl       = document.getElementById('dots');
+const modeBtns     = document.querySelectorAll('.mode-btn');
+
+function fmt(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function timeLeft() {
+  if (!endTime) return totalTime;
+  return Math.max(0, Math.round((endTime - Date.now()) / 1000));
+}
+
+function setRing(frac) {
+  ringFg.style.strokeDashoffset = CIRCUMFERENCE * (1 - frac);
+}
+
+function setModeColor(mode) {
+  ringFg.style.stroke = MODES[mode].color;
+  btnToggle.style.background = MODES[mode].color;
+  btnToggle.style.boxShadow = `0 6px 24px ${MODES[mode].color}44`;
+}
+
+function updateDisplay() {
+  const t = fmt(timeLeft());
+  timerDisplay.textContent = t;
+  setRing(timeLeft() / totalTime);
+  document.title = `${t} — 番茄钟`;
+}
+
+function switchMode(mode) {
+  currentMode = mode;
+  totalTime = MODES[mode].minutes * 60;
+  endTime = null;
+  sessionLabel.textContent = MODES[mode].label;
+  setModeColor(mode);
+  updateDisplay();
+  modeBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  stop();
+  statusText.textContent = '就绪';
+  timerDisplay.classList.remove('time-paused');
+}
+
+function stop() {
+  intervalId = clearInterval(intervalId);
+  btnToggle.textContent = '▶';
+}
+
+function tick() {
+  const left = timeLeft();
+  updateDisplay();
+  if (left <= 0) finish();
+}
+
+function finish() {
+  stop();
+  timerDisplay.classList.add('time-paused');
+  statusText.textContent = '完成 ✓';
+
+  if (currentMode === 'work') {
+    completedToday++;
+    doneCount.textContent = completedToday;
+    const dot = document.createElement('div');
+    dot.className = 'dot done';
+    dotsEl.appendChild(dot);
+    notify('🍅 番茄完成！', '休息一下吧，你值得的。');
+    switchMode(completedToday % 4 === 0 ? 'longBreak' : 'shortBreak');
+  } else {
+    notify('⏰ 休息结束', '准备开始下一个番茄吧。');
+    switchMode('work');
+  }
+}
+
+function notify(title, body) {
+  if (Notification.permission === 'granted') {
+    new Notification(title, { body });
+  }
+}
+
+btnToggle.addEventListener('click', () => {
+  if (intervalId) {
+    endTime = null;
+    stop();
+    statusText.textContent = '已暂停';
+    timerDisplay.classList.add('time-paused');
+    updateDisplay();
+  } else {
+    endTime = Date.now() + timeLeft() * 1000;
+    intervalId = setInterval(tick, 200);
+    statusText.textContent = '进行中…';
+    timerDisplay.classList.remove('time-paused');
+    btnToggle.textContent = '⏸';
+  }
+});
+
+btnReset.addEventListener('click', () => switchMode(currentMode));
+
+btnSkip.addEventListener('click', () => {
+  if (confirm('确定跳过当前阶段吗？')) finish();
+});
+
+modeBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.dataset.mode !== currentMode) switchMode(btn.dataset.mode);
+  });
+});
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space') e.preventDefault();
+  KEY_ACTIONS[e.code]?.();
+});
+
+document.addEventListener('click', () => {
+  if (Notification.permission === 'default') Notification.requestPermission();
+}, { once: true });
+
+setModeColor('work');
+updateDisplay();
+</script>
+</body>
+</html>
